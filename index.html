@@ -161,7 +161,7 @@ const lineStyle = m => ({ color: color(m), weight: 6, opacity: .85 });
 function loadSaved() {
   let saved = [];
   try {
-    const h = location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/');
+    const h = (new URLSearchParams(location.search).get('a') || '').replace(/-/g, '+').replace(/_/g, '/');
     if (h) saved = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(h), c => c.charCodeAt(0))));
   } catch (e) { saved = []; }
   const shapes = [];
