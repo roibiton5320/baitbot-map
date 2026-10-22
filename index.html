@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>אזורי חיפוש</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --bg-2: var(--tg-theme-secondary-bg-color, #f1f2f4);
+    --text: var(--tg-theme-text-color, #16181c);
+    --hint: var(--tg-theme-hint-color, #5b6068);
+    --accent: var(--tg-theme-button-color, #2a83d6);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --in: #1f9d55;
+    --out: #d64545;
+    --radius: 14px;
+    --shadow: 0 6px 24px rgba(10, 14, 20, .14), 0 1px 3px rgba(10, 14, 20, .10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: var(--tg-theme-bg-color, #17191d); --bg-2: var(--tg-theme-secondary-bg-color, #22252b); --text: var(--tg-theme-text-color, #eef0f3); --hint: var(--tg-theme-hint-color, #8d939c); --in: #35c172; --out: #f06464; }
+  }
+  :root[data-theme="dark"] { --in: #35c172; --out: #f06464; --shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35); }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Hebrew", sans-serif; }
+  ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+  #map { position: fixed; inset: 0; }
+  #map.drawing { cursor: crosshair; }
+  .dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9) saturate(.6); }
+  .leaflet-container { background: var(--bg-2); font: inherit; }
+  .leaflet-control-attribution { font-size: 10px; background: color-mix(in srgb, var(--bg) 80%, transparent) !important; color: var(--hint); }
+  .leaflet-control-attribution a { color: var(--hint); }
+
+  .panel { position: fixed; inset-inline: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
+    background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px; z-index: 1000; }
+  .row { display: flex; gap: 8px; align-items: center; }
+
+  .seg { flex: 1; display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-2); border-radius: 10px; padding: 3px; }
+  .seg button { border: 0; background: transparent; color: var(--hint); font: inherit; font-weight: 600; padding: 9px 6px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 6px; transition: background .2s, color .2s; }
+  .seg button[aria-pressed="true"] { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .seg button .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .seg [data-mode="include"] .dot { background: var(--in); }
+  .seg [data-mode="exclude"] .dot { background: var(--out); }
+
+  .draw { border: 0; font: inherit; font-weight: 600; border-radius: 10px; padding: 0 14px; height: 42px;
+    background: var(--accent); color: var(--accent-text); display: flex; align-items: center; gap: 6px; }
+  .draw[aria-pressed="true"] { background: var(--bg-2); color: var(--text); }
+  .draw svg, .chip button svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .hint { margin: 10px 2px 0; color: var(--hint); font-size: 13px; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; margin-top: 10px; scrollbar-width: none; }
+  .chips:empty { display: none; }
+  .chip { flex: none; display: flex; align-items: center; gap: 6px; background: var(--bg-2); border-radius: 999px; padding: 5px 6px 5px 10px; font-size: 13px; }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .chip button { border: 0; background: transparent; color: var(--hint); padding: 2px; display: flex; border-radius: 50%; }
+  .chip button svg { width: 15px; height: 15px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="panel">
+  <div class="row">
+    <div class="seg" role="group" aria-label="סוג אזור">
+      <button data-mode="include" aria-pressed="true"><span class="dot"></span>לחפש כאן</button>
+      <button data-mode="exclude" aria-pressed="false"><span class="dot"></span>לא כאן</button>
+    </div>
+    <button class="draw" id="draw" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      <span>לצייר</span>
+    </button>
+  </div>
+  <p class="hint" id="hint">לחץ "לצייר" ותקיף אזור עם האצבע.</p>
+  <div class="chips" id="chips"></div>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready();
+tg?.expand();
+if (tg?.colorScheme) document.documentElement.dataset.theme = tg.colorScheme;
+
+const dark = (tg?.colorScheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+const css = getComputedStyle(document.documentElement);
+const color = m => css.getPropertyValue(m === 'include' ? '--in' : '--out').trim();
+
+const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([32.0790, 34.7810], 13);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+if (dark) document.documentElement.classList.add('dark-tiles');
+
+// Shapes: existing ones come from the bot in the URL hash.
+let existing = [];
+try {
+  const h = location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/');
+  if (h) existing = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(h), c => c.charCodeAt(0))));
+} catch (e) { existing = []; }
+
+const shapes = [];   // {id?, mode, label, latlngs?, layer, isNew}
+const removed = new Set();
+let mode = 'include';
+let counter = 1;
+
+function style(m) { const c = color(m); return { color: c, weight: 2.5, fillColor: c, fillOpacity: .18 }; }
+
+function addShape(s) {
+  s.layer = s.center ? L.circle(s.center, { radius: s.radius, ...style(s.mode) }) : L.polygon(s.latlngs, style(s.mode));
+  s.layer.addTo(map);
+  shapes.push(s);
+}
+
+existing.forEach(e => addShape({
+  id: e.id, mode: e.m === 'i' ? 'include' : 'exclude', label: e.l,
+  center: e.c, radius: e.r, latlngs: e.p, isNew: false
+}));
+if (shapes.length) map.fitBounds(L.featureGroup(shapes.map(s => s.layer)).getBounds().pad(0.2));
+
+const X_ICON = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+function renderChips() {
+  const el = document.getElementById('chips');
+  el.innerHTML = '';
+  shapes.forEach((s, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = `<span class="dot" style="background:${color(s.mode)}"></span><span></span><button aria-label="מחק">${X_ICON}</button>`;
+    chip.children[1].textContent = s.label;
+    chip.addEventListener('click', ev => {
+      if (ev.target.closest('button')) {
+        map.removeLayer(s.layer);
+        if (!s.isNew) removed.add(s.id);
+        shapes.splice(shapes.indexOf(s), 1);
+        renderChips();
+        updateSave();
+      } else {
+        map.fitBounds(s.layer.getBounds().pad(0.3));
+      }
+    });
+    el.appendChild(chip);
+  });
+}
+
+// Mode toggle
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  tg?.HapticFeedback?.selectionChanged();
+}));
+
+// Freehand lasso drawing
+const drawBtn = document.getElementById('draw');
+const hint = document.getElementById('hint');
+const mapEl = document.getElementById('map');
+let drawing = false, path = null, pts = [];
+
+function setDrawing(on) {
+  drawing = on;
+  drawBtn.setAttribute('aria-pressed', on);
+  drawBtn.querySelector('span').textContent = on ? 'ביטול' : 'לצייר';
+  mapEl.classList.toggle('drawing', on);
+  hint.textContent = on ? 'גרור אצבע מסביב לאזור. כשתרים, הוא יישמר.' : 'לחץ "לצייר" ותקיף אזור עם האצבע.';
+  on ? (map.dragging.disable(), map.touchZoom.disable(), map.doubleClickZoom.disable())
+     : (map.dragging.enable(), map.touchZoom.enable(), map.doubleClickZoom.enable());
+}
+drawBtn.addEventListener('click', () => setDrawing(!drawing));
+
+mapEl.addEventListener('pointerdown', e => {
+  if (!drawing) return;
+  e.preventDefault();
+  mapEl.setPointerCapture(e.pointerId);
+  pts = [map.mouseEventToLatLng(e)];
+  path = L.polyline(pts, { color: color(mode), weight: 3, dashArray: '6 6' }).addTo(map);
+});
+mapEl.addEventListener('pointermove', e => {
+  if (!drawing || !path) return;
+  pts.push(map.mouseEventToLatLng(e));
+  path.setLatLngs(pts);
+});
+mapEl.addEventListener('pointerup', () => {
+  if (!drawing || !path) return;
+  map.removeLayer(path);
+  path = null;
+  const latlngs = simplify(pts);
+  if (latlngs.length >= 3) {
+    addShape({ mode, label: `${mode === 'include' ? 'אזור' : 'לא באזור'} ${counter++}`, latlngs, isNew: true });
+    tg?.HapticFeedback?.impactOccurred('light');
+    renderChips();
+    updateSave();
+  }
+  setDrawing(false);
+});
+
+// Douglas-Peucker in screen space, so a shape stays small enough for Telegram's 4 KB limit.
+function simplify(latlngs, tolerance = 4) {
+  const p = latlngs.map(ll => map.latLngToLayerPoint(ll));
+  let out = L.LineUtil.simplify(p, tolerance);
+  while (out.length > 40) out = L.LineUtil.simplify(p, tolerance *= 1.6);
+  return out.map(pt => map.layerPointToLatLng(pt));
+}
+
+function payload() {
+  const r = n => Math.round(n * 1e5) / 1e5;
+  return {
+    add: shapes.filter(s => s.isNew).map(s => ({ m: s.mode[0], l: s.label, p: s.latlngs.map(ll => [r(ll.lat), r(ll.lng)]) })),
+    remove: [...removed]
+  };
+}
+
+function updateSave() {
+  if (!tg) return;
+  const p = payload();
+  const dirty = p.add.length || p.remove.length;
+  tg.MainButton.setParams({ text: 'שמור אזורים', is_visible: !!dirty });
+}
+
+tg?.MainButton.onClick(() => {
+  const data = JSON.stringify(payload());
+  if (new TextEncoder().encode(data).length > 4096) {
+    tg.showAlert('יותר מדי אזורים בבת אחת. תשמור, ותוסיף את השאר בפעם הבאה.');
+    return;
+  }
+  tg.sendData(data);
+});
+
+renderChips();
+</script>
+</body>
+</html>
