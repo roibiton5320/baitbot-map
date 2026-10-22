@@ -17,67 +17,80 @@
     --accent-text: var(--tg-theme-button-text-color, #ffffff);
     --in: #1f9d55;
     --out: #d64545;
+    --pick: #2a83d6;
     --radius: 14px;
     --shadow: 0 6px 24px rgba(10, 14, 20, .14), 0 1px 3px rgba(10, 14, 20, .10);
   }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg: var(--tg-theme-bg-color, #17191d); --bg-2: var(--tg-theme-secondary-bg-color, #22252b); --text: var(--tg-theme-text-color, #eef0f3); --hint: var(--tg-theme-hint-color, #8d939c); --in: #35c172; --out: #f06464; }
+    :root:not([data-theme="light"]) { --bg: var(--tg-theme-bg-color, #17191d); --bg-2: var(--tg-theme-secondary-bg-color, #22252b); --text: var(--tg-theme-text-color, #eef0f3); --hint: var(--tg-theme-hint-color, #8d939c); --in: #35c172; --out: #f06464; --pick: #5aa7f0; }
   }
-  :root[data-theme="dark"] { --in: #35c172; --out: #f06464; --shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35); }
+  :root[data-theme="dark"] { --in: #35c172; --out: #f06464; --pick: #5aa7f0; --shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35); }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: var(--bg); color: var(--text);
     font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Hebrew", sans-serif; }
   ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
-  #map { position: fixed; inset: 0; }
-  #map.drawing { cursor: crosshair; }
+  #map { position: fixed; inset: 0; touch-action: none; }
   .dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9) saturate(.6); }
   .leaflet-container { background: var(--bg-2); font: inherit; }
   .leaflet-control-attribution { font-size: 10px; background: color-mix(in srgb, var(--bg) 80%, transparent) !important; color: var(--hint); }
   .leaflet-control-attribution a { color: var(--hint); }
 
-  .panel { position: fixed; inset-inline: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
-    background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px; z-index: 1000; }
-  .row { display: flex; gap: 8px; align-items: center; }
+  .panel { position: fixed; inset-inline: 10px; bottom: calc(10px + env(safe-area-inset-bottom));
+    background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px; z-index: 1000;
+    max-height: 48vh; overflow-y: auto; }
 
-  .seg { flex: 1; display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-2); border-radius: 10px; padding: 3px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-2); border-radius: 10px; padding: 3px; }
   .seg button { border: 0; background: transparent; color: var(--hint); font: inherit; font-weight: 600; padding: 9px 6px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; gap: 6px; transition: background .2s, color .2s; }
   .seg button[aria-pressed="true"] { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-  .seg button .dot { width: 9px; height: 9px; border-radius: 50%; }
-  .seg [data-mode="include"] .dot { background: var(--in); }
-  .seg [data-mode="exclude"] .dot { background: var(--out); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .dot.include { background: var(--in); }
+  .dot.exclude { background: var(--out); }
 
-  .draw { border: 0; font: inherit; font-weight: 600; border-radius: 10px; padding: 0 14px; height: 42px;
-    background: var(--accent); color: var(--accent-text); display: flex; align-items: center; gap: 6px; }
-  .draw[aria-pressed="true"] { background: var(--bg-2); color: var(--text); }
-  .draw svg, .chip button svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .hint { margin: 10px 2px 0; color: var(--hint); font-size: 13px; min-height: 18px; }
+  .hint.busy::before { content: ""; display: inline-block; width: 11px; height: 11px; margin-inline-end: 6px; vertical-align: -1px;
+    border: 2px solid var(--hint); border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .picked { margin-top: 10px; padding: 10px; border-radius: 10px; background: color-mix(in srgb, var(--pick) 10%, var(--bg)); }
+  .picked[hidden] { display: none; }
+  .picked-names { font-weight: 600; margin-bottom: 8px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn { border: 0; font: inherit; font-weight: 600; border-radius: 9px; padding: 8px 12px; background: var(--accent); color: var(--accent-text); }
+  .btn.secondary { background: var(--bg-2); color: var(--text); }
+  .btn:disabled { opacity: .45; }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .hint { margin: 10px 2px 0; color: var(--hint); font-size: 13px; }
-  .chips { display: flex; gap: 6px; overflow-x: auto; margin-top: 10px; scrollbar-width: none; }
-  .chips:empty { display: none; }
-  .chip { flex: none; display: flex; align-items: center; gap: 6px; background: var(--bg-2); border-radius: 999px; padding: 5px 6px 5px 10px; font-size: 13px; }
-  .chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  h2 { font-size: 13px; font-weight: 600; color: var(--hint); margin: 14px 2px 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: flex; align-items: center; gap: 6px; background: var(--bg-2); border-radius: 999px; padding: 5px 6px 5px 10px; font-size: 13px; }
+  .chip.new { outline: 1.5px dashed var(--hint); outline-offset: -1.5px; }
   .chip button { border: 0; background: transparent; color: var(--hint); padding: 2px; display: flex; border-radius: 50%; }
-  .chip button svg { width: 15px; height: 15px; }
+  .chip svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .empty { color: var(--hint); font-size: 13px; margin: 0 2px; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 
 <div class="panel">
-  <div class="row">
-    <div class="seg" role="group" aria-label="סוג אזור">
-      <button data-mode="include" aria-pressed="true"><span class="dot"></span>לחפש כאן</button>
-      <button data-mode="exclude" aria-pressed="false"><span class="dot"></span>לא כאן</button>
-    </div>
-    <button class="draw" id="draw" aria-pressed="false">
-      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-      <span>לצייר</span>
-    </button>
+  <div class="seg" role="group" aria-label="סוג אזור">
+    <button data-mode="include" aria-pressed="true"><span class="dot include"></span>לחפש כאן</button>
+    <button data-mode="exclude" aria-pressed="false"><span class="dot exclude"></span>לא כאן</button>
   </div>
-  <p class="hint" id="hint">לחץ "לצייר" ותקיף אזור עם האצבע.</p>
+  <p class="hint" id="hint">הקש על רחוב במפה כדי לבחור אותו.</p>
+
+  <div class="picked" id="picked" hidden>
+    <div class="picked-names" id="picked-names"></div>
+    <div class="actions">
+      <button class="btn" id="add-streets">להוסיף את הרחובות</button>
+      <button class="btn" id="add-between">כל מה שביניהם</button>
+      <button class="btn secondary" id="clear-picks">ניקוי</button>
+    </div>
+  </div>
+
+  <h2>האזורים שלך</h2>
   <div class="chips" id="chips"></div>
 </div>
 
@@ -85,151 +98,218 @@
 const tg = window.Telegram?.WebApp;
 tg?.ready();
 tg?.expand();
+tg?.disableVerticalSwipes?.();   // otherwise dragging the map down closes the app
 if (tg?.colorScheme) document.documentElement.dataset.theme = tg.colorScheme;
-
 const dark = (tg?.colorScheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
 const css = getComputedStyle(document.documentElement);
-const color = m => css.getPropertyValue(m === 'include' ? '--in' : '--out').trim();
+const cssVar = n => css.getPropertyValue(n).trim();
+const color = m => cssVar(m === 'include' ? '--in' : '--out');
 
-const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([32.0790, 34.7810], 13);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19, attribution: '&copy; OpenStreetMap'
-}).addTo(map);
+const map = L.map('map', { zoomControl: false }).setView([32.0790, 34.7710], 13);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
 if (dark) document.documentElement.classList.add('dark-tiles');
 
-// Shapes: existing ones come from the bot in the URL hash.
-let existing = [];
-try {
-  const h = location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/');
-  if (h) existing = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(h), c => c.charCodeAt(0))));
-} catch (e) { existing = []; }
+const hintEl = document.getElementById('hint');
+const DEFAULT_HINT = 'הקש על רחוב במפה כדי לבחור אותו.';
+function hint(text, busy = false) { hintEl.textContent = text; hintEl.classList.toggle('busy', busy); }
 
-const shapes = [];   // {id?, mode, label, latlngs?, layer, isNew}
-const removed = new Set();
+// Compact geometry shared with the bot: units of 1e-4 degrees, first point absolute, then deltas.
+function decodeRing(flat) {
+  const out = []; let lat = 0, lng = 0;
+  for (let i = 0; i < flat.length; i += 2) { lat += flat[i]; lng += flat[i + 1]; out.push([lat / 1e4, lng / 1e4]); }
+  return out;
+}
+function encodeRing(ring) {
+  const flat = []; let plat = 0, plng = 0;
+  for (const [a, b] of ring) { const la = Math.round(a * 1e4), ln = Math.round(b * 1e4); flat.push(la - plat, ln - plng); plat = la; plng = ln; }
+  return flat;
+}
+
+// Every named Tel Aviv street, prebuilt from OpenStreetMap (build_streets.py): name -> encoded lines.
+const streetsReady = fetch('streets.json').then(r => r.json()).then(raw => {
+  const out = new Map();
+  for (const [name, lines] of Object.entries(raw)) {
+    out.set(name, lines.map(flat => {
+      const line = []; let lat = 0, lng = 0;
+      for (let i = 0; i < flat.length; i += 2) { lat += flat[i]; lng += flat[i + 1]; line.push([lat / 1e5, lng / 1e5]); }
+      return line;
+    }));
+  }
+  return out;
+});
+const norm = s => s.replace(/^(רחוב|רח['׳]?|שדרות|שד['׳]?|דרך)\s+/, '').replace(/["'׳״`\-–.,\s]/g, '');
+async function streetLines(name) {
+  const streets = await streetsReady;
+  if (streets.has(name)) return streets.get(name);
+  const key = norm(name);
+  for (const [n, lines] of streets) if (norm(n) === key) return lines;
+  return [];
+}
+const streetCache = { get: name => pickedLines.get(name) };
+const pickedLines = new Map();
+
+// ---- state
 let mode = 'include';
-let counter = 1;
+const areas = [];     // {id?, isNew, mode, label, layer, payload?}
+const removed = new Set();
+let picks = [];       // [{name, layer}]
 
-function style(m) { const c = color(m); return { color: c, weight: 2.5, fillColor: c, fillOpacity: .18 }; }
+function addArea(a) { map.addLayer(a.layer); areas.push(a); }
+const fillStyle = m => ({ color: color(m), weight: 2.5, fillColor: color(m), fillOpacity: .16 });
+const lineStyle = m => ({ color: color(m), weight: 6, opacity: .85 });
 
-function addShape(s) {
-  s.layer = s.center ? L.circle(s.center, { radius: s.radius, ...style(s.mode) }) : L.polygon(s.latlngs, style(s.mode));
-  s.layer.addTo(map);
-  shapes.push(s);
+function loadSaved() {
+  let saved = [];
+  try {
+    const h = location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/');
+    if (h) saved = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(h), c => c.charCodeAt(0))));
+  } catch (e) { saved = []; }
+  const shapes = [];
+  for (const s of saved) {
+    const m = s.m === 'i' ? 'include' : 'exclude';
+    let layer;
+    if (s.k === 'r') layer = L.circle(s.c, { radius: s.r, ...fillStyle(m) });
+    else if (s.k === 'p') layer = L.featureGroup(s.g.map(r => L.polygon(decodeRing(r), fillStyle(m))));
+    else if (s.k === 's') layer = L.featureGroup();
+    else continue;
+    addArea({ id: s.id, isNew: false, mode: m, label: s.l, layer });
+    if (s.k === 's') {
+      streetLines(s.s).then(lines => lines.forEach(l => layer.addLayer(L.polyline(l, lineStyle(m))))).catch(() => {});
+    } else {
+      shapes.push(layer);
+    }
+  }
+  if (shapes.length) map.fitBounds(L.featureGroup(shapes).getBounds().pad(0.08), { paddingBottomRight: [0, 120] });
+  renderChips();
 }
 
-existing.forEach(e => addShape({
-  id: e.id, mode: e.m === 'i' ? 'include' : 'exclude', label: e.l,
-  center: e.c, radius: e.r, latlngs: e.p, isNew: false
-}));
-if (shapes.length) map.fitBounds(L.featureGroup(shapes.map(s => s.layer)).getBounds().pad(0.2));
-
-const X_ICON = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
-function renderChips() {
-  const el = document.getElementById('chips');
-  el.innerHTML = '';
-  shapes.forEach((s, i) => {
-    const chip = document.createElement('div');
-    chip.className = 'chip';
-    chip.innerHTML = `<span class="dot" style="background:${color(s.mode)}"></span><span></span><button aria-label="מחק">${X_ICON}</button>`;
-    chip.children[1].textContent = s.label;
-    chip.addEventListener('click', ev => {
-      if (ev.target.closest('button')) {
-        map.removeLayer(s.layer);
-        if (!s.isNew) removed.add(s.id);
-        shapes.splice(shapes.indexOf(s), 1);
-        renderChips();
-        updateSave();
-      } else {
-        map.fitBounds(s.layer.getBounds().pad(0.3));
+// ---- tap a street to pick it
+map.on('click', async e => {
+  const streets = await streetsReady.catch(() => null);
+  if (!streets) { hint('לא הצלחתי לטעון את מפת הרחובות. תסגור ותפתח שוב.'); return; }
+  const pt = map.latLngToLayerPoint(e.latlng);
+  const box = L.latLngBounds(map.layerPointToLatLng(pt.subtract([40, 40])), map.layerPointToLatLng(pt.add([40, 40])));
+  let best = null, bestD = 28;  // px: generous for fingers
+  for (const [name, lines] of streets) {
+    for (const line of lines) {
+      for (let i = 1; i < line.length; i++) {
+        const a = line[i - 1], b = line[i];
+        if (!box.contains(a) && !box.contains(b) && !box.intersects(L.latLngBounds(a, b))) continue;
+        const d = L.LineUtil.pointToSegmentDistance(pt, map.latLngToLayerPoint(a), map.latLngToLayerPoint(b));
+        if (d < bestD) { bestD = d; best = name; }
       }
-    });
-    el.appendChild(chip);
-  });
+    }
+  }
+  if (!best) { hint('לא מצאתי רחוב כאן. תקיש על הקו של הרחוב.'); return; }
+  const existing = picks.find(p => p.name === best);
+  if (existing) {  // tapping a picked street again un-picks it
+    map.removeLayer(existing.layer);
+    picks = picks.filter(p => p !== existing);
+    renderPicks(); hint(DEFAULT_HINT);
+    return;
+  }
+  const lines = streets.get(best);
+  pickedLines.set(best, lines);
+  const layer = L.featureGroup(lines.map(l => L.polyline(l, { color: cssVar('--pick'), weight: 7, opacity: .9 }))).addTo(map);
+  picks.push({ name: best, layer });
+  tg?.HapticFeedback?.selectionChanged();
+  renderPicks();
+  hint(picks.length === 1 ? 'אפשר להקיש על עוד רחוב, או לבחור פעולה.' : DEFAULT_HINT);
+});
+
+function renderPicks() {
+  document.getElementById('picked').hidden = !picks.length;
+  document.getElementById('picked-names').textContent = picks.map(p => p.name).join(' · ');
+  const between = document.getElementById('add-between');
+  between.disabled = picks.length !== 2;
+  between.textContent = picks.length === 2 ? `כל מה שבין ${picks[0].name} ל${picks[1].name}` : 'כל מה שבין 2 רחובות';
+  document.getElementById('add-streets').textContent = picks.length === 1 ? 'להוסיף את הרחוב' : 'להוסיף את הרחובות';
+}
+function clearPicks() { picks.forEach(p => map.removeLayer(p.layer)); picks = []; renderPicks(); }
+document.getElementById('clear-picks').onclick = () => { clearPicks(); hint(DEFAULT_HINT); };
+
+document.getElementById('add-streets').onclick = () => {
+  for (const p of picks) {
+    const layer = L.featureGroup(streetCache.get(p.name).map(l => L.polyline(l, lineStyle(mode))));
+    addArea({ isNew: true, mode, label: `רחוב ${p.name}`, layer, payload: { k: 's', m: mode[0], s: p.name } });
+  }
+  clearPicks(); renderChips(); updateSave(); hint('נוסף. לחץ "שמור" כשתסיים.');
+};
+
+document.getElementById('add-between').onclick = () => {
+  if (picks.length !== 2) return;
+  const [a, b] = picks;
+  const ring = simplify(hull([...streetCache.get(a.name), ...streetCache.get(b.name)].flat()), 40);
+  const layer = L.polygon(ring, fillStyle(mode));
+  const label = `בין ${a.name} ל${b.name}`;
+  addArea({ isNew: true, mode, label, layer, payload: { k: 'b', m: mode[0], l: label, g: [encodeRing(ring)] } });
+  clearPicks(); renderChips(); updateSave();
+  map.fitBounds(layer.getBounds().pad(0.15));
+  hint('נוסף. תבדוק שהאזור נכון, ואז "שמור".');
+};
+
+// Monotone-chain convex hull on [lat, lng].
+function hull(points) {
+  const p = [...new Map(points.map(q => [q.join(), q])).values()].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (p.length < 3) return p;
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const q of p) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of p.reverse()) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+function simplify(ring, maxPts) {
+  let tol = 1, out = ring;
+  const pts = ring.map(ll => map.latLngToLayerPoint(ll));
+  while (out.length > maxPts) out = L.LineUtil.simplify(pts, tol *= 1.6).map(pt => { const ll = map.layerPointToLatLng(pt); return [ll.lat, ll.lng]; });
+  return out;
 }
 
-// Mode toggle
+// ---- include / exclude
 document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
   mode = b.dataset.mode;
   document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
   tg?.HapticFeedback?.selectionChanged();
 }));
 
-// Freehand lasso drawing
-const drawBtn = document.getElementById('draw');
-const hint = document.getElementById('hint');
-const mapEl = document.getElementById('map');
-let drawing = false, path = null, pts = [];
-
-function setDrawing(on) {
-  drawing = on;
-  drawBtn.setAttribute('aria-pressed', on);
-  drawBtn.querySelector('span').textContent = on ? 'ביטול' : 'לצייר';
-  mapEl.classList.toggle('drawing', on);
-  hint.textContent = on ? 'גרור אצבע מסביב לאזור. כשתרים, הוא יישמר.' : 'לחץ "לצייר" ותקיף אזור עם האצבע.';
-  on ? (map.dragging.disable(), map.touchZoom.disable(), map.doubleClickZoom.disable())
-     : (map.dragging.enable(), map.touchZoom.enable(), map.doubleClickZoom.enable());
-}
-drawBtn.addEventListener('click', () => setDrawing(!drawing));
-
-mapEl.addEventListener('pointerdown', e => {
-  if (!drawing) return;
-  e.preventDefault();
-  mapEl.setPointerCapture(e.pointerId);
-  pts = [map.mouseEventToLatLng(e)];
-  path = L.polyline(pts, { color: color(mode), weight: 3, dashArray: '6 6' }).addTo(map);
-});
-mapEl.addEventListener('pointermove', e => {
-  if (!drawing || !path) return;
-  pts.push(map.mouseEventToLatLng(e));
-  path.setLatLngs(pts);
-});
-mapEl.addEventListener('pointerup', () => {
-  if (!drawing || !path) return;
-  map.removeLayer(path);
-  path = null;
-  const latlngs = simplify(pts);
-  if (latlngs.length >= 3) {
-    addShape({ mode, label: `${mode === 'include' ? 'אזור' : 'לא באזור'} ${counter++}`, latlngs, isNew: true });
-    tg?.HapticFeedback?.impactOccurred('light');
-    renderChips();
-    updateSave();
+// ---- saved areas
+const X_ICON = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+function renderChips() {
+  const el = document.getElementById('chips');
+  el.innerHTML = '';
+  if (!areas.length) { el.innerHTML = '<p class="empty">עוד אין אזורים, אז מחפשים בכל תל אביב.</p>'; return; }
+  for (const a of areas) {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (a.isNew ? ' new' : '');
+    chip.innerHTML = `<span class="dot ${a.mode}"></span><span></span><button aria-label="מחיקה">${X_ICON}</button>`;
+    chip.children[1].textContent = a.label;
+    chip.addEventListener('click', ev => {
+      if (ev.target.closest('button')) {
+        map.removeLayer(a.layer);
+        if (!a.isNew) removed.add(a.id);
+        areas.splice(areas.indexOf(a), 1);
+        renderChips(); updateSave();
+      } else {
+        try { map.fitBounds(a.layer.getBounds().pad(0.2)); } catch (e) { /* street still loading */ }
+      }
+    });
+    el.appendChild(chip);
   }
-  setDrawing(false);
-});
-
-// Douglas-Peucker in screen space, so a shape stays small enough for Telegram's 4 KB limit.
-function simplify(latlngs, tolerance = 4) {
-  const p = latlngs.map(ll => map.latLngToLayerPoint(ll));
-  let out = L.LineUtil.simplify(p, tolerance);
-  while (out.length > 40) out = L.LineUtil.simplify(p, tolerance *= 1.6);
-  return out.map(pt => map.layerPointToLatLng(pt));
 }
 
-function payload() {
-  const r = n => Math.round(n * 1e5) / 1e5;
-  return {
-    add: shapes.filter(s => s.isNew).map(s => ({ m: s.mode[0], l: s.label, p: s.latlngs.map(ll => [r(ll.lat), r(ll.lng)]) })),
-    remove: [...removed]
-  };
-}
-
+// ---- save
+function payload() { return { add: areas.filter(a => a.isNew).map(a => a.payload), remove: [...removed] }; }
 function updateSave() {
-  if (!tg) return;
   const p = payload();
-  const dirty = p.add.length || p.remove.length;
-  tg.MainButton.setParams({ text: 'שמור אזורים', is_visible: !!dirty });
+  tg?.MainButton.setParams({ text: 'שמור', is_visible: !!(p.add.length || p.remove.length) });
 }
-
 tg?.MainButton.onClick(() => {
   const data = JSON.stringify(payload());
-  if (new TextEncoder().encode(data).length > 4096) {
-    tg.showAlert('יותר מדי אזורים בבת אחת. תשמור, ותוסיף את השאר בפעם הבאה.');
-    return;
-  }
+  if (new TextEncoder().encode(data).length > 4096) { tg.showAlert('יותר מדי שינויים בבת אחת. תשמור חלק, ותוסיף את השאר אחר כך.'); return; }
   tg.sendData(data);
 });
 
-renderChips();
+loadSaved();
 </script>
 </body>
 </html>
